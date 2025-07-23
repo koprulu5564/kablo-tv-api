@@ -2,44 +2,30 @@ name: Update Kablo TV M3U
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # 6 saatte bir (UTC)
+    - cron: '0 */6 * * *'
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    permissions:  # 👈 Yeni eklenen kısım
+      contents: write  # Repo'ya yazma izni
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}  # 🔑 Bu satır kritik!
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
-        run: pip install requests
-
-      - name: Run Kablo API Script
-        id: run_script
-        run: |
-          python kablo_api.py
-          echo "result=$?" >> $GITHUB_OUTPUT
+      - name: Run Script
+        run: python kablo_api.py
 
       - name: Commit Changes
-        if: steps.run_script.outputs.result == '0'
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add kablo_tv.m3u
-          git diff-index --quiet HEAD || git commit -m "Auto-update [$(date +'%d.%m.%Y %H:%M')]"
-          git push
-
-      - name: Upload Error Log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: error-logs
-          path: error.log
+          git commit -m "Auto-update [$(date +'%d.%m.%Y %H:%M')]"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
